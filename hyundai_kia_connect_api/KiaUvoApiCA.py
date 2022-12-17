@@ -560,6 +560,11 @@ class KiaUvoApiCA(ApiImpl):
         if last_action_completed:
             action_status = response["result"]["transaction"]["apiStatusCode"]
             _LOGGER.debug(f"{DOMAIN} - Last action_status: {action_status}")
+            if action_status == '200':
+                _LOGGER.debug(f"{DOMAIN} - Last action completed, updating vehicle state with payload: {state}")
+                state = response["result"]['vehicle']
+                self._update_vehicle_properties_base(vehicle, state)
+
         return last_action_completed
 
     def start_charge(self, token: Token, vehicle: Vehicle) -> str:
