@@ -424,6 +424,7 @@ class KiaUvoApiCA(ApiImpl):
         )
         _LOGGER.debug(f"{DOMAIN} - Received Pin validation response {response.json()}")
         result = response.json()["result"]
+        token.last_pin_token = result["pAuth"]
 
         return result["pAuth"]
 
@@ -438,7 +439,7 @@ class KiaUvoApiCA(ApiImpl):
         headers = self.API_HEADERS
         headers["accessToken"] = token.access_token
         headers["vehicleId"] = vehicle.id
-        headers["pAuth"] = self._get_pin_token(token, vehicle)
+        #headers["pAuth"] = self._get_pin_token(token, vehicle)
 
         response = requests.post(
             url, headers=headers, data=json.dumps({"pin": token.pin})
@@ -550,9 +551,11 @@ class KiaUvoApiCA(ApiImpl):
         headers["accessToken"] = token.access_token
         headers["vehicleId"] = vehicle.id
         headers["transactionId"] = action_id
-        headers["pAuth"] = self._get_pin_token(token, vehicle)
+        headers["pAuth"] = token.last_pin_token
         response = requests.post(url, headers=headers)
         response = response.json()
+
+        _LOGGER.debug(f"{DOMAIN} - Last action_status API response: {response}")
 
         last_action_completed = (
             response["result"]["transaction"]["apiStatusCode"] != "null"
@@ -560,9 +563,11 @@ class KiaUvoApiCA(ApiImpl):
         if last_action_completed:
             action_status = response["result"]["transaction"]["apiStatusCode"]
             _LOGGER.debug(f"{DOMAIN} - Last action_status: {action_status}")
-            if action_status == '200':
+            if action_status == "200":
+                state = {
+                    "status": response['result']['vehicle']
+                }
                 _LOGGER.debug(f"{DOMAIN} - Last action completed, updating vehicle state with payload: {state}")
-                state = response["result"]['vehicle']
                 self._update_vehicle_properties_base(vehicle, state)
 
         return last_action_completed
